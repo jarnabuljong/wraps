@@ -4,6 +4,7 @@ import pc from "picocolors";
 import { deployEmailStack } from "../../infrastructure/email-stack.js";
 import { trackCommand, trackError } from "../../telemetry/events.js";
 import type { EmailConfigOptions } from "../../types/index.js";
+import { assertNoFeatureDrift } from "../../utils/email/feature-drift.js";
 import { resolveDashboardUrl } from "../../utils/selfhost/dashboard-url.js";
 import {
   getAWSRegion,
@@ -89,6 +90,11 @@ export async function config(options: EmailConfigOptions): Promise<void> {
   }
 
   progress.info(`Found existing connection created: ${metadata.timestamp}`);
+
+  await progress.execute(
+    "Checking deployed resources against settings",
+    async () => await assertNoFeatureDrift(metadata, region)
+  );
 
   // 5. Display current configuration
   console.log(`\n${pc.bold("Current Configuration:")}\n`);

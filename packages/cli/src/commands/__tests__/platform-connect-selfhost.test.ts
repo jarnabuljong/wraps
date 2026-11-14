@@ -8,6 +8,11 @@ import {
 import { mockClient } from "aws-sdk-client-mock";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+// The drift guard probes AWS; feature-drift.test.ts covers it.
+vi.mock("../../utils/email/feature-drift.js", () => ({
+  assertNoFeatureDrift: vi.fn().mockResolvedValue(undefined),
+}));
+
 // Do NOT vi.mock("@aws-sdk/client-iam") — mockClient patches the prototype directly.
 vi.mock("@pulumi/pulumi", () => ({
   automation: { LocalWorkspace: { createOrSelectStack: vi.fn() } },

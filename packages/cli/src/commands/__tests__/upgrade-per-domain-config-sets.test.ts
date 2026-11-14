@@ -1,6 +1,11 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { setJsonMode } from "../../utils/shared/json-output.js";
 
+// The drift guard probes AWS; feature-drift.test.ts covers it.
+vi.mock("../../utils/email/feature-drift.js", () => ({
+  assertNoFeatureDrift: vi.fn().mockResolvedValue(undefined),
+}));
+
 // Mock all external dependencies
 vi.mock("@pulumi/pulumi", () => ({
   automation: {

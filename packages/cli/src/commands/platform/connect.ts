@@ -26,6 +26,7 @@ import pc from "picocolors";
 import { deployEmailStack } from "../../infrastructure/email-stack.js";
 import { trackCommand, trackError } from "../../telemetry/events.js";
 import type { PlatformConnectOptions } from "../../types/index.js";
+import { assertNoFeatureDrift } from "../../utils/email/feature-drift.js";
 import {
   normalizeApiUrl,
   reconcileSelfhostApiUrl,
@@ -194,6 +195,8 @@ async function deployEventBridge(
     progress.stop();
     metadata.vercel = await promptVercelConfig();
   }
+
+  await assertNoFeatureDrift(metadata, region);
 
   const stackConfig = buildEmailStackConfig(
     metadata,
@@ -1276,6 +1279,8 @@ export async function connect(options: PlatformConnectOptions): Promise<void> {
         progress.stop();
         metadata.vercel = await promptVercelConfig();
       }
+
+      await assertNoFeatureDrift(metadata, region);
 
       // Explicit webhook override needed because the freshly generated
       // webhookSecret may not yet be saved to metadata at this point

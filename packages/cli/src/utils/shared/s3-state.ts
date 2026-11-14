@@ -159,17 +159,18 @@ export async function ensureStateBucket(
 }
 
 /**
- * Upload connection metadata to S3
+ * Upload connection metadata to S3. Returns the new object version when the
+ * bucket is versioned.
  */
 export async function uploadMetadata(
   bucketName: string,
   metadata: ConnectionMetadata
-): Promise<void> {
+): Promise<string | undefined> {
   const { S3Client, PutObjectCommand } = await import("@aws-sdk/client-s3");
   const client = new S3Client({ region: metadata.region });
   const key = `metadata/${metadata.accountId}-${metadata.region}.json`;
 
-  await client.send(
+  const response = await client.send(
     new PutObjectCommand({
       Bucket: bucketName,
       Key: key,
@@ -177,6 +178,7 @@ export async function uploadMetadata(
       ContentType: "application/json",
     })
   );
+  return response.VersionId;
 }
 
 /**

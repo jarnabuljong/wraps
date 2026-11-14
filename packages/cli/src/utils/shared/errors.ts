@@ -847,6 +847,41 @@ export const errors = {
       "https://wraps.dev/docs/guides/aws-setup/troubleshooting"
     ),
 
+  featureDrift: (
+    drifts: Array<{ feature: string; settings: string; resources: string[] }>,
+    accountId: string,
+    region: string
+  ) =>
+    new WrapsError(
+      `The Wraps settings for ${accountId} in ${region} are missing features that are deployed:\n${drifts
+        .map(
+          (d) =>
+            `  ${d.feature} (settings: ${d.settings}); deployed: ${d.resources.join(", ")}`
+        )
+        .join(
+          "\n"
+        )}\nPlanning from these settings would delete those resources, so nothing was planned.`,
+      "FEATURE_DRIFT",
+      "Rebuild the missing sections from what is deployed:\n  wraps email reconcile --preview   (shows what it would write)\n  wraps email reconcile             (writes it as a new version of the settings file)\n\nOr restore the sections from an earlier version of the settings file in your wraps-state-* bucket (metadata/ prefix), then run your command again.",
+      "https://wraps.dev/docs/guides/aws-setup/troubleshooting"
+    ),
+
+  featureDriftCheckFailed: (resource: string, reason: string) =>
+    new WrapsError(
+      `Could not check whether ${resource} is deployed (${reason})`,
+      "FEATURE_DRIFT_CHECK_FAILED",
+      "Wraps checks that every deployed feature is in its settings before it plans, so a missing settings section can't delete resources. Grant read access to that resource (Describe/Get/Head) or fix the credentials, then run the command again.",
+      "https://wraps.dev/docs/guides/aws-setup/troubleshooting"
+    ),
+
+  featureNotInferable: (feature: string, reason: string) =>
+    new WrapsError(
+      `Can't rebuild the ${feature} settings from AWS: ${reason}`,
+      "FEATURE_NOT_INFERABLE",
+      "Restore the section from an earlier version of the settings file in your wraps-state-* bucket (metadata/ prefix). Nothing was written.",
+      "https://wraps.dev/docs/guides/aws-setup/troubleshooting"
+    ),
+
   pendingOperations: () =>
     new WrapsError(
       "The Pulumi stack has unresolved operations from a previous deployment",

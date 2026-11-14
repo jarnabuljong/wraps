@@ -22,6 +22,7 @@ import {
 } from "../../utils/dns/credentials.js";
 import { calculateCosts, formatCost } from "../../utils/email/costs.js";
 import { checkEventPipeline } from "../../utils/email/event-pipeline-check.js";
+import { assertNoFeatureDrift } from "../../utils/email/feature-drift.js";
 import { confirmManagedDedicatedIps } from "../../utils/email/managed-dedicated-ips.js";
 import { getAllPresetInfo, getPreset } from "../../utils/email/presets.js";
 import { resolveDashboardUrl } from "../../utils/selfhost/dashboard-url.js";
@@ -122,6 +123,12 @@ export async function upgrade(options: UpgradeOptions): Promise<void> {
   }
 
   progress.info(`Found existing connection created: ${metadata.timestamp}`);
+
+  // 4.5. Refuse to plan when a deployed feature is missing from the settings
+  await progress.execute(
+    "Checking deployed resources against settings",
+    async () => await assertNoFeatureDrift(metadata, region)
+  );
 
   // 5. Display current configuration
   console.log(`\n${pc.bold("Current Configuration:")}\n`);
@@ -2161,7 +2168,19 @@ export async function upgrade(options: UpgradeOptions): Promise<void> {
     throw new Error(`Pulumi upgrade failed: ${extractPulumiErrorSummary(msg)}`);
   }
 
-  // 13. Create DNS records using stored provider (or detect if not stored)
+  // 13. Save the deployed configuration before the DNS step. DNS can stop at
+  // an interactive prompt (provider choice, API token) that times out or is
+  // cancelled; the stack is already deployed, so the settings must already
+  // say so. The final save below records what the DNS step adds.
+  updateEmailConfig(metadata, updatedConfig);
+  if (metadata.services.email) {
+    metadata.services.email.preset = newPreset;
+  }
+  await saveConnectionMetadata(metadata);
+
+  progress.info("Connection metadata updated");
+
+  // 14. Create DNS records using stored provider (or detect if not stored)
   // Skip DNS management in JSON mode — non-interactive
   let dnsAutoCreated = false;
   if (
@@ -2284,15 +2303,6 @@ export async function upgrade(options: UpgradeOptions): Promise<void> {
       );
     }
   }
-
-  // 14. Update metadata
-  updateEmailConfig(metadata, updatedConfig);
-  if (metadata.services.email) {
-    metadata.services.email.preset = newPreset;
-  }
-  await saveConnectionMetadata(metadata);
-
-  progress.info("Connection metadata updated");
 
   // 15. Format tracking domain DNS records if custom tracking domain was added
   const trackingDomainDnsRecords = [];

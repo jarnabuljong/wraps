@@ -659,6 +659,93 @@ describe("metadata save order", () => {
 });
 
 // ─────────────────────────────────────────────────────────
+// Test 12b: Email stack deploys check for settings drift first
+// (baseline.toml can't handle this: needs a cross-call presence check)
+//
+// The email stack is generated from the settings file, so a feature missing
+// from it plans as a delete of that feature's deployed resources (13 Nov:
+// a settings file without `inbound` planned to delete 12 wraps-inbound-*
+// resources). Every command that runs the stack from stored settings must
+// call assertNoFeatureDrift before it plans.
+// ─────────────────────────────────────────────────────────
+
+describe("email stack drift guard", () => {
+  // Fresh deploys: both exit when settings already exist, so there is no
+  // stored file to drift from, and they import existing resources instead.
+  const FRESH_DEPLOY_FILES = new Set([
+    "packages/cli/src/commands/email/init.ts",
+    "packages/cli/src/commands/email/connect.ts",
+  ]);
+
+  test("every command that deploys the email stack calls assertNoFeatureDrift", () => {
+    const violations = getCLICommandFiles()
+      .filter((file) => !FRESH_DEPLOY_FILES.has(file))
+      .filter((file) => {
+        const content = readFile(file);
+        return (
+          /deployEmailStack\s*\(/.test(content) &&
+          !/assertNoFeatureDrift\s*\(/.test(content)
+        );
+      });
+
+    expect(violations, violations.join("\n")).toEqual([]);
+  });
+
+  test("the fresh-deploy exemptions still deploy the email stack", () => {
+    for (const file of FRESH_DEPLOY_FILES) {
+      expect(readFile(file)).toMatch(/deployEmailStack\s*\(/);
+    }
+  });
+});
+
+// ─────────────────────────────────────────────────────────
+// Test 12c: Settings are saved after a deploy and before its DNS step
+// (baseline.toml can't handle this: needs ordering semantics within a file)
+//
+// The DNS step can stop at an interactive prompt (provider choice, API token)
+// that times out or is cancelled. If the settings are saved only after it,
+// the deployed resources are missing from the settings, and the next plan
+// deletes them (13 Nov: email upgrade stopped at a Cloudflare token prompt).
+// ─────────────────────────────────────────────────────────
+
+describe("metadata save before DNS", () => {
+  test("a stack deploy is followed by saveConnectionMetadata before any DNS provider call", () => {
+    const deployRegex = /stack\.up\s*\(/;
+    const saveRegex = /saveConnectionMetadata\s*\(/;
+    const dnsRegex =
+      /detectAvailableDNSProviders\s*\(|getDNSCredentials\s*\(|promptDNSProvider\s*\(/;
+    const violations: string[] = [];
+
+    for (const file of getCLICommandFiles()) {
+      const lines = readFile(file).split("\n");
+      let deployedAt: number | undefined;
+      let saved = false;
+      for (let i = 0; i < lines.length; i++) {
+        const line = lines[i];
+        if (line.trim().startsWith("//")) {
+          continue;
+        }
+        if (deployRegex.test(line)) {
+          deployedAt = i + 1;
+          saved = false;
+        } else if (saveRegex.test(line)) {
+          saved = true;
+        } else if (deployedAt !== undefined && dnsRegex.test(line)) {
+          if (!saved) {
+            violations.push(
+              `${file}:${i + 1} — DNS step after the deploy at line ${deployedAt} with no saveConnectionMetadata in between`
+            );
+          }
+          deployedAt = undefined;
+        }
+      }
+    }
+
+    expect(violations, violations.join("\n")).toEqual([]);
+  });
+});
+
+// ─────────────────────────────────────────────────────────
 // Test 13: No duplicate infrastructure helper functions
 // (baseline.toml can't handle this: cross-file uniqueness check)
 // ─────────────────────────────────────────────────────────

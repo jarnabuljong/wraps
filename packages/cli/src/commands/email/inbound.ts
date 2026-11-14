@@ -15,6 +15,7 @@ import type {
   InboundDomain,
 } from "../../types/index.js";
 import { SES_RECEIVING_REGIONS } from "../../types/index.js";
+import { assertNoFeatureDrift } from "../../utils/email/feature-drift.js";
 import {
   addDomainToReceiptRule,
   createReceiptRule,
@@ -257,6 +258,11 @@ export async function inboundInit(
     throw errors.inboundRequiresOutbound();
   }
 
+  await progress.execute(
+    "Checking deployed resources against settings",
+    async () => await assertNoFeatureDrift(metadata, region)
+  );
+
   const trackedDomains = getAllTrackedDomains(metadata);
 
   if (trackedDomains.length === 0) {
@@ -463,7 +469,22 @@ export async function inboundInit(
     }
   });
 
-  // 15. DNS Configuration - auto-create or show manual records
+  // 16. Save the deployed configuration before the DNS step. DNS can stop at
+  // an interactive prompt (provider choice, API token) that times out or is
+  // cancelled; the stack and receipt rule already exist, so the settings must
+  // already say so, or the next deploy plans to delete them. The final save
+  // below adds the DNS provider.
+  await progress.execute("Saving configuration", async () => {
+    metadata.services.email = {
+      ...emailService,
+      config: updatedEmailConfig,
+      deployedAt: new Date().toISOString(),
+    };
+    metadata.timestamp = new Date().toISOString();
+    await saveConnectionMetadata(metadata);
+  });
+
+  // 17. DNS Configuration - auto-create or show manual records
   let dnsAutoCreated = false;
 
   const {
@@ -589,7 +610,7 @@ export async function inboundInit(
     );
   }
 
-  // 16. Save metadata
+  // 18. Save the DNS provider chosen above
   await progress.execute("Saving configuration", async () => {
     metadata.services.email = {
       ...emailService,
@@ -601,7 +622,7 @@ export async function inboundInit(
     await saveConnectionMetadata(metadata);
   });
 
-  // 17. Display success
+  // 19. Display success
   if (isJsonMode()) {
     jsonSuccess("email.inbound.init", {
       receivingDomain,
@@ -698,6 +719,11 @@ export async function inboundDestroy(
     console.log(`\nDeploy first: ${pc.cyan("wraps email inbound init")}\n`);
     process.exit(1);
   }
+
+  await progress.execute(
+    "Checking deployed resources against settings",
+    async () => await assertNoFeatureDrift(metadata, region)
+  );
 
   const emailService = metadata.services.email;
   // biome-ignore lint/style/noNonNullAssertion: validated by enabled check above
@@ -1579,7 +1605,19 @@ export async function inboundAdd(
     }
   });
 
-  // 10. DNS automation
+  // 10. Save the domain before the DNS step, which can stop at an
+  // interactive prompt; the receipt rule already receives for it.
+  await progress.execute("Saving configuration", async () => {
+    addInboundDomainToMetadata(metadata, {
+      subdomain,
+      receivingDomain,
+      parentDomain,
+      addedAt: new Date().toISOString(),
+    });
+    await saveConnectionMetadata(metadata);
+  });
+
+  // 11. DNS automation
   let dnsAutoCreated = false;
 
   const {
@@ -1739,14 +1777,8 @@ export async function inboundAdd(
     }
   }
 
-  // 11. Save to metadata
+  // 12. Save the DNS provider chosen above
   await progress.execute("Saving configuration", async () => {
-    addInboundDomainToMetadata(metadata, {
-      subdomain,
-      receivingDomain,
-      parentDomain,
-      addedAt: new Date().toISOString(),
-    });
     await saveConnectionMetadata(metadata);
   });
 
