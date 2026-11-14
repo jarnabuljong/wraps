@@ -1,3 +1,8 @@
+// The drift guard probes AWS; feature-drift.test.ts covers it.
+vi.mock("../../utils/email/feature-drift.js", () => ({
+  assertNoFeatureDrift: vi.fn().mockResolvedValue(undefined),
+}));
+
 /**
  * `wraps platform disconnect` — removes the app.wraps.dev event target.
  *

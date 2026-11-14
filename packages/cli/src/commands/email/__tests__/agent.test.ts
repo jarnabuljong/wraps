@@ -1,3 +1,8 @@
+// The drift guard probes AWS; feature-drift.test.ts covers it.
+vi.mock("../../../utils/email/feature-drift.js", () => ({
+  assertNoFeatureDrift: vi.fn().mockResolvedValue(undefined),
+}));
+
 /**
  * Unit tests for `wraps email agent` (create/list/kill).
  *

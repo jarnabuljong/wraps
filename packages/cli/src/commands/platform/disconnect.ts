@@ -42,6 +42,7 @@ import { CONSOLE_ACCESS_ROLE_NAME } from "@wraps/core";
 import pc from "picocolors";
 import { deployEmailStack } from "../../infrastructure/email-stack.js";
 import type { PlatformDisconnectOptions } from "../../types/index.js";
+import { assertNoFeatureDrift } from "../../utils/email/feature-drift.js";
 import { validateAWSCredentials } from "../../utils/shared/aws.js";
 import {
   getApiBaseUrl,
@@ -415,6 +416,8 @@ export async function disconnect(
     // Here that teardown is the entire purpose of the command. Do not
     // "fix" this line to match the connect flow — deleting the platform
     // target is what the user asked for.
+    await assertNoFeatureDrift(metadata, region);
+
     const stackConfig = buildEmailStackConfig(metadata, region, {
       webhook: undefined,
     });

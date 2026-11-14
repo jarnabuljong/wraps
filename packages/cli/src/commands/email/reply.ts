@@ -20,6 +20,7 @@ import type {
 } from "../../types/index.js";
 import { SES_RECEIVING_REGIONS } from "../../types/index.js";
 import type { InboundDNSCleanupResult } from "../../utils/dns/index.js";
+import { assertNoFeatureDrift } from "../../utils/email/feature-drift.js";
 import {
   addDomainToReceiptRule,
   getReceiptRuleDomains,
@@ -451,6 +452,8 @@ export async function replyInit(options: EmailReplyInitOptions): Promise<void> {
       "https://wraps.dev/docs/guides/reply-threading"
     );
   }
+
+  await assertNoFeatureDrift(metadata, region);
 
   const emailService = metadata.services.email;
   const emailConfig = emailService.config;
@@ -1104,6 +1107,8 @@ export async function replyDestroy(
     clack.log.warn("Reply threading is not configured.");
     return;
   }
+
+  await assertNoFeatureDrift(metadata, region);
 
   let targets: string[];
   if (options.all) {

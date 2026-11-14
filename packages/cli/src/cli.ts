@@ -105,6 +105,7 @@ import { emailLogsGet, emailLogsList } from "./commands/email/logs.js";
 import { emailMetrics } from "./commands/email/metrics.js";
 import { emailPlan } from "./commands/email/plan.js";
 import { emailProductionAccess } from "./commands/email/production-access.js";
+import { reconcile } from "./commands/email/reconcile.js";
 import {
   replyDecode,
   replyDestroy,
@@ -304,6 +305,9 @@ function showHelp() {
     `  ${pc.cyan("email sync")}              Apply CLI updates to infrastructure`
   );
   console.log(`  ${pc.cyan("email upgrade")}           Add features`);
+  console.log(
+    `  ${pc.cyan("email reconcile")}         Rebuild missing settings from deployed resources`
+  );
   console.log(
     `  ${pc.cyan("email restore")}           Restore original configuration`
   );
@@ -1096,6 +1100,15 @@ async function run() {
             json: flags.json,
             action: flags.action,
             preset: flags.preset,
+          });
+          break;
+
+        case "reconcile":
+          await reconcile({
+            region: flags.region,
+            yes: flags.yes,
+            preview: flags.preview,
+            json: flags.json,
           });
           break;
 

@@ -9,6 +9,7 @@ import type {
   EmailAgentListOptions,
   EmailAgentPolicyOptions,
 } from "../../types/index.js";
+import { assertNoFeatureDrift } from "../../utils/email/feature-drift.js";
 import {
   createAgentApiClient,
   parseAgentApiError as parseError,
@@ -156,6 +157,8 @@ export async function agentCreate(
     console.log(`\nDeploy first: ${pc.cyan("wraps email init")}\n`);
     process.exit(1);
   }
+
+  await assertNoFeatureDrift(metadata, region);
 
   const emailService = metadata.services.email;
   const emailConfig = emailService.config;

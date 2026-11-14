@@ -44,6 +44,7 @@ export type {
   EmailInboundTestOptions,
   EmailInboundVerifyOptions,
   EmailInitOptions,
+  EmailReconcileOptions,
   EmailReplyDecodeOptions,
   EmailReplyDestroyOptions,
   EmailReplyInitOptions,

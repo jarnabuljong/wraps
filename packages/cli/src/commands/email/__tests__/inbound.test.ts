@@ -2,6 +2,11 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { buildInboundDNSRecords } from "../../../utils/dns/create-records.js";
 import { setJsonMode } from "../../../utils/shared/json-output.js";
 
+// The drift guard probes AWS; feature-drift.test.ts covers it.
+vi.mock("../../../utils/email/feature-drift.js", () => ({
+  assertNoFeatureDrift: vi.fn().mockResolvedValue(undefined),
+}));
+
 // Mock clack
 vi.mock("@clack/prompts", () => ({
   intro: vi.fn(),
@@ -871,6 +876,37 @@ describe("inboundInit non-interactive guard", () => {
     expect(receiptRules.createReceiptRule).not.toHaveBeenCalled();
     expect(receiptRules.setActiveReceiptRuleSet).not.toHaveBeenCalled();
     expect(dns.createInboundDNSRecordsForProvider).not.toHaveBeenCalled();
+    expect(saveConnectionMetadata).not.toHaveBeenCalled();
+  });
+
+  it("refuses before any plan when a deployed feature is missing from the settings", async () => {
+    const { loadConnectionMetadata, saveConnectionMetadata } = await import(
+      "../../../utils/shared/metadata.js"
+    );
+    vi.mocked(loadConnectionMetadata).mockResolvedValue(cloneMetadata());
+    const { assertNoFeatureDrift } = await import(
+      "../../../utils/email/feature-drift.js"
+    );
+    const { WrapsError } = await import("../../../utils/shared/errors.js");
+    vi.mocked(assertNoFeatureDrift).mockRejectedValueOnce(
+      new WrapsError("drift", "FEATURE_DRIFT")
+    );
+    const pulumi = await import("@pulumi/pulumi");
+    const pulumiUtils = await import("../../../utils/shared/pulumi.js");
+
+    await expect(
+      inboundInit({
+        domain: "example.com",
+        subdomain: "support",
+        yes: true,
+        preview: true,
+      })
+    ).rejects.toMatchObject({ code: "FEATURE_DRIFT" });
+
+    expect(
+      pulumi.automation.LocalWorkspace.createOrSelectStack
+    ).not.toHaveBeenCalled();
+    expect(pulumiUtils.previewWithResourceChanges).not.toHaveBeenCalled();
     expect(saveConnectionMetadata).not.toHaveBeenCalled();
   });
 

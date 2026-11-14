@@ -253,6 +253,32 @@ const CLI_ERROR_SECTIONS: ErrorSection[] = [
           "Run pulumi refresh to reconcile state, or pulumi stack export to inspect it. If a deployment is genuinely still running elsewhere, wait for it instead.",
       },
       {
+        code: "FEATURE_DRIFT",
+        message:
+          "The Wraps settings for <account> in <region> are missing features that are deployed",
+        solution:
+          "Run wraps email reconcile --preview, then wraps email reconcile to rebuild the missing sections from AWS, or restore them from an earlier version of the settings file. Nothing was planned.",
+      },
+      {
+        code: "FEATURE_DRIFT_CHECK_FAILED",
+        message: "Could not check whether <resource> is deployed (<reason>)",
+        solution:
+          "Grant read access (Describe/Get/Head) to the named resource or fix the credentials, then run the command again",
+      },
+      {
+        code: "FEATURE_NOT_INFERABLE",
+        message: "Can't rebuild the <feature> settings from AWS: <reason>",
+        solution:
+          "Restore the section from an earlier version of the settings file in your wraps-state-* bucket (metadata/ prefix). Nothing was written.",
+      },
+      {
+        code: "EMAIL_NOT_CONFIGURED",
+        message:
+          "No Wraps email settings found for account <account> in <region>",
+        solution:
+          "Run wraps email init to deploy, or wraps email connect to adopt existing infrastructure",
+      },
+      {
         code: "PULUMI_ERROR",
         message: "Infrastructure deployment failed: <message>",
         solution:

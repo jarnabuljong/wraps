@@ -296,6 +296,35 @@ export async function deleteReceiptRuleSet(region: string): Promise<void> {
 }
 
 /**
+ * Read the receiving domains of the Wraps catch-all receipt rule.
+ * Returns null when the rule or its rule set does not exist.
+ */
+export async function getReceiptRuleRecipients(
+  region: string
+): Promise<string[] | null> {
+  const ses = createSESClient(region);
+
+  try {
+    const response = await ses.send(
+      new DescribeReceiptRuleCommand({
+        RuleSetName: RULE_SET_NAME,
+        RuleName: RULE_NAME,
+      })
+    );
+    return response.Rule?.Recipients ?? [];
+  } catch (error: unknown) {
+    if (
+      error instanceof Error &&
+      (error.name === "RuleDoesNotExistException" ||
+        error.name === "RuleSetDoesNotExistException")
+    ) {
+      return null;
+    }
+    throw error;
+  }
+}
+
+/**
  * Add a domain to the existing receipt rule's Recipients list.
  * If the rule or rule set doesn't exist, creates them with this domain.
  */

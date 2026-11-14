@@ -512,6 +512,16 @@ export type EmailUpgradeOptions = {
 };
 
 /**
+ * Command options for email reconcile
+ */
+export type EmailReconcileOptions = {
+  region?: string;
+  yes?: boolean;
+  preview?: boolean;
+  json?: boolean;
+};
+
+/**
  * Command options for email update
  */
 /**

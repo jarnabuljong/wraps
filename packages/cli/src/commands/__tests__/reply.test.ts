@@ -16,6 +16,11 @@ import {
   replyInit,
 } from "../email/reply.js";
 
+// The drift guard probes AWS; feature-drift.test.ts covers it.
+vi.mock("../../utils/email/feature-drift.js", () => ({
+  assertNoFeatureDrift: vi.fn().mockResolvedValue(undefined),
+}));
+
 const ssmMock = mockClient(SSMClient);
 
 // Mock clack

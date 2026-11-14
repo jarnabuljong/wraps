@@ -341,6 +341,30 @@ export async function saveConnectionMetadata(
 }
 
 /**
+ * Save connection metadata locally and to the S3 state bucket, and fail when
+ * the S3 write fails. For writes the user relies on (`email reconcile`), where
+ * the silent write-through of `saveConnectionMetadata` would hide a lost save.
+ * Returns the bucket and new object version, or nothing when there is no
+ * state bucket (local-only state).
+ */
+export async function saveConnectionMetadataToState(
+  metadata: ConnectionMetadata
+): Promise<{ bucket: string; versionId?: string } | undefined> {
+  await saveConnectionMetadataLocal(metadata);
+  if (process.env.WRAPS_LOCAL_ONLY === "1") {
+    return;
+  }
+  const { stateBucketExists, uploadMetadata, getStateBucketName } =
+    await import("./s3-state.js");
+  if (!(await stateBucketExists(metadata.accountId, metadata.region))) {
+    return;
+  }
+  const bucket = getStateBucketName(metadata.accountId, metadata.region);
+  const versionId = await uploadMetadata(bucket, metadata);
+  return { bucket, versionId };
+}
+
+/**
  * Delete connection metadata (local + S3)
  */
 export async function deleteConnectionMetadata(

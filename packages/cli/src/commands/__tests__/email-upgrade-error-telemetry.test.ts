@@ -8,6 +8,11 @@ import {
   vi,
 } from "vitest";
 
+// The drift guard probes AWS; feature-drift.test.ts covers it.
+vi.mock("../../utils/email/feature-drift.js", () => ({
+  assertNoFeatureDrift: vi.fn().mockResolvedValue(undefined),
+}));
+
 /**
  * `email upgrade`'s deploy catch (`upgrade.ts:2126`) ended with
  *
